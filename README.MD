@@ -319,3 +319,6 @@ bloodhound/sharphound in win to get AD info and attack path; add new user in dom
 
 #### ready.htb
   gitlab vunl to get user shell; search gitlab config, get root passwd, su to root; notice we root the container, check docker-compose file, has privi :true; mount host disk to container; generate ssh key to root/.ssh, ssh -i 
+
+#### passage.htb
+> app vuln get web shell; applcation folder enum to lateral move , ssh key reuse lateral again; user group and .viminfo point to a software we can lauch to write ssh pub key to root/.ssh/; ssh as root
